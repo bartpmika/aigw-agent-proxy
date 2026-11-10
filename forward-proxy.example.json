@@ -1,0 +1,26 @@
+{
+  "metadata": { "team": "rnd" },
+  "identity": { "userDomain": "example.com" },
+  "webInspection": {
+    "guardrails": null,
+    "responseGuardrails": null,
+    "maxScanBytes": 262144,
+    "bypassHosts": ["*.anthropic.com", "claude.ai", "*.claude.ai", "*.statsig.com", "*.sentry.io"]
+  },
+  "routes": [
+    {
+      "match": { "model": "claude-opus-*" },
+      "config": {
+        "strategy": { "mode": "fallback", "on_status_codes": [429, 529] },
+        "targets": [
+          { "origin": true },
+          { "origin": true, "override_params": { "model": "claude-sonnet-5-5" } }
+        ]
+      }
+    },
+    {
+      "match": { "agent": "codex" },
+      "config": "pc-codex-routing"
+    }
+  ]
+}
