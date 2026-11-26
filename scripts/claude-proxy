@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Starts a coding agent with all of its traffic going through aigw-agent-proxy.
+# Starts the proxy in the background if it isn't running yet.
+#   claude-proxy [args]   -> claude
+#   codex-proxy  [args]   -> codex   (symlink or copy this script as codex-proxy)
+set -euo pipefail
+
+CONF_DIR="${AIGW_PROXY_HOME:-$HOME/.aigw-agent-proxy}"
+ENV_FILE="$CONF_DIR/proxy.env"
+LOG_FILE="$CONF_DIR/proxy.log"
+PID_FILE="$CONF_DIR/proxy.pid"
+CLAUDE_SETTINGS="$CONF_DIR/claude.settings.json"
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "claude-proxy: missing $ENV_FILE (copy proxy.env.example from the repo)" >&2
+  exit 1
+fi
+set -a
+source "$ENV_FILE"
+set +a
+
+PROXY_PORT="${FORWARD_PROXY_PORT:-8789}"
+PROXY_URL="http://127.0.0.1:${PROXY_PORT}"
+export FORWARD_PROXY_CA_DIR="${FORWARD_PROXY_CA_DIR:-$CONF_DIR}"
+
+# The proxy binary: AIGW_PROXY_BIN, else on PATH.
+BIN="${AIGW_PROXY_BIN:-$(command -v aigw-agent-proxy || true)}"
+# Resolve symlinks, so the running process is identified by its real path.
+BIN_REAL=""
+if [[ -n "$BIN" ]]; then
+  BIN_REAL=$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "$BIN" 2>/dev/null || echo "$BIN")
+fi
+
+proxy_up() { curl -sf --noproxy '*' -o /dev/null "${PROXY_URL}/ca.pem"; }
+
+# Always run the current build: restart a proxy on our port that is another
+# program (e.g. an older gateway) or older than the binary on disk.
+if proxy_up && [[ -n "$BIN" && -x "$BIN" ]]; then
+  running=$(lsof -ti "tcp:${PROXY_PORT}" -sTCP:LISTEN 2>/dev/null | head -1 || true)
+  bin_real="$BIN_REAL"
+  running_exe=$(ps -o comm= -p "$running" 2>/dev/null || true)
+  if [[ -n "$running" ]] && { [[ "$running_exe" != "$bin_real" ]] || [[ ! -f "$PID_FILE" ]] \
+      || [[ "$(cat "$PID_FILE")" != "$running" ]] || [[ "$bin_real" -nt "$PID_FILE" ]]; }; then
+    echo "claude-proxy: restarting the proxy on the current build" >&2
+    pkill -P "$running" 2>/dev/null || true
+    kill "$running" 2>/dev/null || true
+    for _ in $(seq 1 40); do proxy_up || break; sleep 0.25; done
+  fi
+fi
+
+if ! proxy_up; then
+  if [[ -z "$BIN" || ! -x "$BIN" ]]; then
+    echo "claude-proxy: aigw-agent-proxy not found (install it or set AIGW_PROXY_BIN)" >&2
+    exit 1
+  fi
+  echo "claude-proxy: starting aigw-agent-proxy (log: $LOG_FILE)" >&2
+  nohup "$BIN_REAL" >>"$LOG_FILE" 2>&1 &
+  echo $! >"$PID_FILE"
+  for _ in $(seq 1 60); do
+    proxy_up && break
+    sleep 0.25
+  done
+  proxy_up || { echo "claude-proxy: proxy failed to start; see $LOG_FILE" >&2; exit 1; }
+fi
+
+export HTTPS_PROXY="$PROXY_URL" https_proxy="$PROXY_URL"
+export HTTP_PROXY="$PROXY_URL" http_proxy="$PROXY_URL"
+# Local traffic stays direct (IDE integration, local dev servers).
+export NO_PROXY="localhost,127.0.0.1,::1" no_proxy="localhost,127.0.0.1,::1"
+# Trust the proxy's local CA: Node (Claude Code) adds it to its roots; the
+# tools agents shell out to (curl, git, Python, AWS CLI) use the bundle.
+CA_BUNDLE="$FORWARD_PROXY_CA_DIR/ca-bundle.pem"
+export NODE_EXTRA_CA_CERTS="$FORWARD_PROXY_CA_DIR/ca.cert.pem"
+export SSL_CERT_FILE="$CA_BUNDLE" CURL_CA_BUNDLE="$CA_BUNDLE" \
+  REQUESTS_CA_BUNDLE="$CA_BUNDLE" GIT_SSL_CAINFO="$CA_BUNDLE" \
+  PIP_CERT="$CA_BUNDLE" AWS_CA_BUNDLE="$CA_BUNDLE" \
+  CODEX_CA_CERTIFICATE="$CA_BUNDLE"
+
+case "$(basename "$0")" in
+  codex-proxy*) exec codex "$@" ;;
+  *)
+    # Optional Claude Code settings for proxied sessions (e.g. a status line).
+    if [[ -f "$CLAUDE_SETTINGS" ]]; then
+      exec claude --settings "$CLAUDE_SETTINGS" "$@"
+    fi
+    exec claude "$@" ;;
+esac

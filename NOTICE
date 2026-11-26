@@ -1,0 +1,100 @@
+aigw-agent-proxy
+Copyright (c) 2026 Palo Alto Networks, Inc. All rights reserved.
+
+No license is granted for the original code in this repository. It is
+published for viewing; copying, modifying or redistributing it requires
+permission.
+
+This repository also contains material derived from third-party software,
+which remains under its own license, as follows.
+
+
+1. Portkey AI Gateway
+---------------------
+
+Source: https://github.com/Portkey-AI/gateway
+
+Derived material:
+- Request/response transforms for LLM providers, the config schema and the
+  routing logic, ported from the gateway's TypeScript source.
+- data/providers.json: provider parameter maps and API templates extracted
+  from the gateway's provider configurations.
+
+The gateway's main branch is licensed under the MIT License (text below).
+
+Part of the material comes from the gateway's 2.0.0 pre-release branch (the
+enterprise gateway being merged into open source). That branch's
+package.json declares the MIT License, but the branch does not include a
+LICENSE file, so its license terms are not stated in full. Material taken
+from code that exists only on that branch:
+- data/pricing/*.json: model pricing tables (copied verbatim)
+- src/adapter.rs: the Messages API adapter (port of src/adapters/messages)
+- src/router.rs: the circuit breaker (port of src/utils/circuitBreaker.ts)
+  and sticky sessions (port of src/services/stickySessionManager.ts)
+- src/analytics.rs and src/control_plane.rs: the control-plane log,
+  analytics and sync formats (from src/services/winky, src/services/albus
+  and the sync workers)
+- src/policy.rs: usage and rate-limit rules and their error messages
+- src/gateway.rs: target execution and guardrail handling, as found on that
+  branch
+
+MIT License (Portkey AI Gateway, main branch):
+
+  Copyright (c) 2024 Portkey, Inc
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+
+2. Mustache templates
+---------------------
+
+src/mustache.rs is a port of @portkey-ai/mustache
+(https://github.com/Portkey-AI/mustache, ISC License), itself a fork of
+mustache.js (https://github.com/janl/mustache.js), which is licensed under
+the MIT License:
+
+  Copyright (c) 2009 Chris Wanstrath (Ruby)
+  Copyright (c) 2010-2014 Jan Lehnardt (JavaScript)
+  Copyright (c) 2010-2015 The mustache.js community
+
+  Permission is hereby granted, free of charge, to any person obtaining a copy
+  of this software and associated documentation files (the "Software"), to deal
+  in the Software without restriction, including without limitation the rights
+  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+  copies of the Software, and to permit persons to whom the Software is
+  furnished to do so, subject to the following conditions:
+
+  The above copyright notice and this permission notice shall be included in all
+  copies or substantial portions of the Software.
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  SOFTWARE.
+
+
+3. Rust crates
+--------------
+
+Third-party Rust crates compiled into the binary are listed, with their
+license texts, in THIRD_PARTY_LICENSES.txt (regenerate with
+scripts/third-party-licenses.sh).
